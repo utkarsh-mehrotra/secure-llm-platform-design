@@ -1,0 +1,8 @@
+- [x] Define Staff-Level Data Contracts (CapabilityToken, TrustManifest, MultiChannelInput)
+- [x] Design Multi-Layer Sanitizer (L1 Regex, L2 LLM Classifier, L3 Transformation)
+- [x] Design Capability Token Minting & Validation Flow
+- [x] Design Deterministic Execution Model (Planning vs Execution vs Synthesis)
+- [x] Address Multi-Tenant Isolation (Per-tenant Indexing)
+- [x] Detail Observability & Audit Logging (Comprehensive Audit Trail)
+- [x] Create the `hardened_llm_lld.md` artifact
+- [x] Finalize Walkthrough
