@@ -36,6 +36,7 @@ class SecureUserQuery(BaseModel):
     query: str
     user_id: str
     session_id: Optional[str] = None
+    llm_config: Optional[Any] = None # Added for UI support
 
 # --- Routes ---
 @app.post("/v1/query")
@@ -49,7 +50,8 @@ async def secure_query(req: SecureUserQuery):
         result = await orchestrator.process_request(
             user_query=req.query,
             user_id=req.user_id,
-            session_id=session_id
+            session_id=session_id,
+            llm_config=req.llm_config
         )
         return result
     except Exception as e:

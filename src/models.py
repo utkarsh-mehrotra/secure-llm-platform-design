@@ -59,7 +59,19 @@ class ToolRequest(BaseModel):
     tool_name: str
     params: Dict[str, Any] = Field(default_factory=dict)
 
-class ToolResponse(BaseModel):
-    status: str
-    data: Any
-    error: Optional[str] = None
+class ModelProvider(Enum):
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    CUSTOM = "custom"
+
+class LLMConfig(BaseModel):
+    provider: ModelProvider
+    model_name: str
+    endpoint_url: Optional[str] = None
+    api_key: Optional[str] = None # Masked in UI
+
+class SecureUserQuery(BaseModel):
+    query: str
+    user_id: str
+    session_id: Optional[str] = None
+    llm_config: Optional[LLMConfig] = None
