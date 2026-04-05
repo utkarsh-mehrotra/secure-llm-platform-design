@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # --- Secure API Service ---
+  api:
+    build: .
+    container_name: secure-llm-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - MASTER_KEY=test_local_secret_1234567 # Overridden in production
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    networks:
+      - secure-network
+    restart: unless-stopped
+
+  # --- Secure Frontend UI ---
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: secure-llm-ui
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - secure-network
+    restart: unless-stopped
+
+networks:
+  secure-network:
+    driver: bridge
