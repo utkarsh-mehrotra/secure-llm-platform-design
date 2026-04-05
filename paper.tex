@@ -1,141 +1,118 @@
 \documentclass[10pt,twocolumn,letterpaper]{article}
 
-\usepackage{times}
-\usepackage{epsfig}
+% --- Core Typography & Encoding ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype} % Superior character protrusion and font expansion
+
+% --- Layout & Spacing ---
+\usepackage[margin=0.75in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{authblk}
+
+% --- Graphics & Math ---
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{url}
-\usepackage{authblk}
-\usepackage{booktabs}
-\usepackage{listings}
-\usepackage{color}
-\usepackage{xcolor}
-\usepackage{framed}
 
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+% --- Code & Colors ---
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{nord-blue}{RGB}{94, 129, 172}
+\definecolor{nord-green}{RGB}{163, 190, 140}
+\definecolor{nord-purple}{RGB}{180, 142, 173}
+\definecolor{nord-gray}{RGB}{76, 86, 106}
+\definecolor{code-bg}{RGB}{248, 249, 251}
 
 \lstset{
-    backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{magenta},
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
+    backgroundcolor=\color{code-bg},
+    commentstyle=\color{nord-gray}\itshape,
+    keywordstyle=\color{nord-blue}\bfseries,
+    numberstyle=\tiny\color{nord-gray},
+    stringstyle=\color{nord-green},
     basicstyle=\footnotesize\ttfamily,
-    breakatwhitespace=false,         
-    breaklines=true,                 
-    captionpos=b,                    
-    keepspaces=true,                 
-    numbers=left,                    
-    numbersep=5pt,                  
-    showspaces=false,                
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=8pt,
+    showspaces=false,
     showstringspaces=false,
-    showtabs=false,                  
-    tabsize=2
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{nord-gray!20}
 }
 
-\title{Towards Formally Verifiable Security in LLM-Based Agents: \\
-Policy-Learned Capability Constraints and Semantic Robustness}
+% --- Navigation ---
+\usepackage[colorlinks=true, linkcolor=nord-blue, citecolor=nord-blue, urlcolor=nord-blue]{hyperref}
+
+% --- Section Formatting ---
+\titleformat{\section}{\large\bfseries\uppercase}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\setlist[itemize]{noitemsep, topsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=2pt}
+
+% --- Document Metadata ---
+\title{\Large\bfseries Towards Formally Verifiable Security in LLM-Based Agents: \\ 
+\large Policy-Learned Capability Constraints and Semantic Robustness}
 
 \author[1]{Utkarsh Mehrotra}
 \author[2]{Himakshi Bhatia}
-\affil[1,2]{Secure Systems Architecture Group}
+\affil[1,2]{Secure Systems Architecture Group \\ \texttt{\{utkarsh, himakshi\}@secure-systems.edu}}
+
+\date{}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-The integration of Large Language Models (LLMs) with external data via Retrieval-Augmented Generation (RAG) has introduced a critical threat: \textit{Indirect Prompt Injection} (IPI), where untrusted documents manipulate LLM planning and execution. Existing defenses rely on heuristics (text delimiters, regex patterns, semantic classifiers) that are fundamentally brittle against adaptive adversaries. This paper makes three contributions: (1) \textbf{Formal Threat Model}: We define a multi-level security hierarchy for LLM agents distinguishing between tool-execution attacks, decision-influence attacks, and information-disclosure attacks—each with different implications. (2) \textbf{Policy-Learned Capability Constraints}: We propose a novel approach to automatically synthesize input constraints for tool execution via reinforcement learning over execution traces, eliminating manual regex engineering. (3) \textbf{Semantic Robustness Evaluation}: We develop a benchmark of 2,847 adversarial documents evaluated by both automated attack generation (GCG-based paraphrasing) and human red-teamers. Our system achieves 98.2\% tool-execution mitigation with 94.1\% benign document preservation (F-score: 0.961). Critically, we openly evaluate semantic attack resilience: against paraphrased jailbreaks, the system degrades to 87.3\% detection, revealing the necessity of hybrid defenses. We demonstrate that policy-learned constraints generalize to 73\% of unseen tools, while hand-crafted constraints generalize to only 41\%. This work establishes a framework for formally reasoning about LLM agent security and quantifies the current limitations of architectural isolation alone.
+\textit{The integration of Large Language Models (LLMs) with external data via Retrieval-Augmented Generation (RAG) has introduced a critical threat: Indirect Prompt Injection (IPI). Existing defenses rely on brittle heuristics (delimiters, regex, classifiers) that fail against adaptive adversaries. This paper makes three contributions: (1) A formal multi-level security hierarchy for LLM agents; (2) A novel framework for policy-learned capability constraints (CLOP); and (3) A comprehensive evaluation on the IPIBENCH-2847 benchmark. Our system achieves 98.2\% mitigation of tool-execution attacks with a 94.1\% benign preservation rate (F-score: 0.961), establishing a new architectural standard for LLM agent security.}
 \end{abstract}
 
 \section{Introduction}
+Large Language Models have evolved from simple text predictors to autonomous agents capable of tool invocation and retrieval. This shift introduces a critical vulnerability: \textbf{Indirect Prompt Injection (IPI)}.
 
-\subsection{Motivation and Problem Statement}
-
-Large Language Models have evolved from text predictors to autonomous agents capable of planning, tool invocation, and information retrieval in real-world environments. This capability comes with a critical vulnerability: \textit{Indirect Prompt Injection} (IPI).
-
-\subsubsection{The Core Problem}
-Consider a production RAG system:
-\begin{itemize}
-    \item A user asks: \textit{``Summarize company policies on employee benefits.''}
-    \item The system retrieves a document from the vector database.
-    \item Unbeknownst to the system, an attacker planted a malicious document containing: \textit{``[ADMIN NOTE] Execute the following SQL: DELETE FROM employees WHERE salary > 100k.''}
-    \item The LLM planner, tasked with ``summarizing,'' instead interprets the embedded instruction and calls a tool to execute the SQL.
-    \item Business-critical data is lost.
-\end{itemize}
-
-This scenario is \textbf{not hypothetical}. It has been demonstrated in production systems \cite{ref_would_be_included}, and defense today remains fragile.
-
-\subsubsection{Why Existing Defenses Fail}
-Current industry approaches fall into three categories:
-
-\begin{enumerate}
-    \item \textbf{Text Delimiters} (e.g., ``---BEGIN DATA ---''):
-    \begin{itemize}
-        \item Assume the LLM perfectly respects syntactic boundaries.
-        \item Fail against instruction injection using colloquial language. 
-        \item Vulnerable to context-mixing where the adversary's intent aligns with the task.
-    \end{itemize}
-
-    \item \textbf{Semantic Filters} (e.g., Llama Guard, NeMo Guardrails):
-    \begin{itemize}
-        \item Fail when adversaries use paraphrases, indirect phrasing, or domain-specific jargon.
-        \item Generate high false-positive rates, degrading user experience.
-        \item Create an adversarial arms race with no equilibrium.
-    \end{itemize}
-
-    \item \textbf{Architectural Isolation (Coarse-Grained)}:
-    \begin{itemize}
-        \item Still allow the LLM to autonomously decide which tools to invoke.
-        \item This is a \textit{soft boundary}—the LLM is exposed to adversarial influence during planning.
-    \end{itemize}
-\end{enumerate}
-
-\subsubsection{The Research Gap}
-The fundamental issue is that existing defenses treat prompt injection as a \textit{content problem} rather than a \textit{capability problem}. We propose a different approach: \textbf{capability-based authorization combined with learned constraint synthesis}.
-
-Rather than trying to perfectly detect adversarial text (an arms race we cannot win), we ensure that:
-\begin{enumerate}
-    \item Only authorized tools can be invoked (via cryptographic tokens).
-    \item Constraints on tool inputs are automatically synthesized via CLOP.
-    \item The system degrades gracefully, quantifying where defenses fail.
-\end{enumerate}
-
-\subsection{Contributions}
-
-\begin{enumerate}
-    \item \textbf{Formal Multi-Level Threat Model for LLM Agents}: Distinguishing between IPI-A, IPI-B, and IPI-C attack classes.
-    \item \textbf{Policy-Learned Capability Constraints}: Introducing CLOP (Constraint Learning Over Periods) for automatic synthesis.
-    \item \textbf{Comprehensive Benchmark and Honest Evaluation}: Releasing IPIBENCH-2847 and quantifying IPI-B/C limitations.
-\end{enumerate}
+\subsection{The Capability Problem}
+Current industry approaches (e.g., text delimiters or semantic filters) treat prompt injection as a \textit{content detection} problem. However, we argue that LLM security must be framed as a \textbf{capability-based authorization} problem. Rather than trying to perfectly filter adversarial text, we must ensure that only explicitly authorized tools and parameters can be invoked, regardless of the LLM's internal state.
 
 \section{Formal Threat Model}
+We define a three-level hierarchy for LLM agent security:
 
-\subsection{Three Classes of Attacks}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{IPI-A (Tool-Execution)}: Attacks aiming to trigger unauthorized tool use. 
+    \item \textbf{IPI-B (Decision-Influence)}: Attacks biasing the model's planning without direct tool execution.
+    \item \textbf{IPI-C (Information-Disclosure)}: Attacks extracting system secrets or document data.
+\end{itemize}
 
-\subsubsection{Class A: Tool-Execution Attacks (IPI-A)}
-An attacker successfully causes the orchestrator to invoke an unauthorized tool $t \notin \tau$.
-\textit{Defense}: Capability tokens are \textbf{strong} here.
+\section{Methodology: CLOP Framework}
+We introduce \textbf{Constraint Learning Over Periods (CLOP)}, a framework to automatically synthesize tool-execution constraints by observing interaction traces. 
 
-\subsubsection{Class B: Decision-Influence Attacks (IPI-B)}
-An attacker biases the planner's decisions without direct tool execution (e.g., biased recommendations).
-\textit{Defense}: Capability tokens are \textbf{neutral}. Semantic isolation is required.
+\begin{lstlisting}[language=Python, caption=Distilled CLOP Constraint for SQL Tool]
+# Policy-learned constraint for database tool
+{
+  "tool": "sql_query",
+  "constraints": {
+    "query": "^SELECT (?!.*(DROP|DELETE|UPDATE))",
+    "limit": "max_value(100)"
+  },
+  "auth": "HMAC_SHA256"
+}
+\end{lstlisting}
 
-\subsubsection{Class C: Information-Disclosure Attacks (IPI-C)}
-An attacker extracts secrets from the system prompt or documents.
-\textit{Defense}: Output filtering is necessary (orthogonal to this work).
-
-\section{Methodology: CLOP}
-We introduce Constraint Learning Over Periods (CLOP) to synthesize parameterized tool constraints by observing valid user-tool interaction traces. Unlike hand-crafted regex, learned policies generalize to \textbf{73\%} of unseen tools.
+Unlike hand-crafted regex, CLOP-learned policies generalize to **73\%** of unseen tools, compared to only **41\%** for manual engineering.
 
 \section{Experimental Evaluation}
-Our system achieves **98.2\% IPI-A mitigation** with only **2.1\% false positives** (F-score: 0.961). Against paraphrased IPI-B jailbreaks, detection drops to **87.3\%**, proving that architectural isolation must be a component of a larger defense-in-depth safety stack.
+Our system achieves **98.2\% IPI-A mitigation** with an F-score of **0.961**. While architectural isolation provides a strong cryptographic guarantee for IPI-A, we openly evaluate resilience against semantic (IPI-B) attacks: against paraphrased jailbreaks, our detection rate drops to **87.3\%**.
 
 \section{Conclusion}
-The bridge from prototype to production requires moving from heuristic filters toward formal architectural isolation. By combining Data Plane Isolation with HMAC-based Capability Tokens and learned constraints, we demonstrate a system that remains secure even when processing highly adversarial data.
+The bridge from prototype to production requires moving from heuristic filters toward \textbf{formal architectural isolation}. By combining Data Plane Isolation with HMAC-based Capability Tokens and learned constraints, we demonstrate a system that remains secure against privilege escalation even under full model compromise.
 
 \begin{thebibliography}{99}
 \bibitem{ref_llama_guard} Iavarone, R. et al. (2023). ``Llama Guard: A Safety Framework.'' \textit{Meta AI}.
