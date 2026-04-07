@@ -12,7 +12,8 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+// Use Environment Variable for Production (Vercel)
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 const DEFAULT_ENDPOINTS = {
   openai: { name: 'GPT-4o', provider: 'openai', url: 'https://api.openai.com/v1/chat/completions' },
