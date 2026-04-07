@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
+import os
 
 # Local imports
-from .models import TrustManifest, CapabilityToken, ToolRequest, ToolResponse
+from .models import TrustManifest, CapabilityToken, ToolRequest, ToolResponse, SecureUserQuery
 from .policy import PolicyEngine
 from .sanitizer import ContextSanitizer
 from .gateway import ToolGateway, ToolRegistry
@@ -12,9 +14,21 @@ from .orchestrator import Orchestrator
 
 app = FastAPI(title="Secure LLM Platform")
 
+# --- CORS Configuration ---
+# In production, ALLOWED_ORIGINS is provided by Render/Railway
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- Dependency Injection & State ---
-# In production, use a secure secret from KMS
-MASTER_KEY = "staff_level_super_secret_key_123456"
+# In production, use a secure secret from KMS or Env
+MASTER_KEY = os.getenv("MASTER_KEY", "staff_level_dev_key_123")
 
 registry = ToolRegistry()
 policy_engine = PolicyEngine(master_key=MASTER_KEY)
@@ -31,11 +45,7 @@ def database_lookup(query: str) -> str:
 
 registry.register("database_lookup", database_lookup)
 
-# --- API Models ---
-class SecureUserQuery(BaseModel):
-    query: str
-    user_id: str
-    session_id: Optional[str] = None
+# --- API Routes ---
 
 # --- Routes ---
 @app.post("/v1/query")

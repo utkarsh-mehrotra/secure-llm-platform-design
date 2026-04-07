@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: secure-llm-api
+    env: docker
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    plan: starter # Render's free tier for web services
+    region: oregon # or your preferred region
+    envVars:
+      - key: MASTER_KEY
+        generateValue: true # Generates a secure random secret if not provided
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "https://*.vercel.app" # Default to allow Vercel previews
+    healthCheckPath: /health
