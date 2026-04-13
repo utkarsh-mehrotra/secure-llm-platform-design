@@ -6,3 +6,7 @@ cryptography
 httpx
 python-multipart
 python-jose[cryptography]
+openai
+anthropic
+pandas
+scikit-learn
